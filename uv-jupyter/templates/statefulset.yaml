@@ -1,0 +1,139 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-ubuntu-jupyter
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Release.Name }}-ubuntu-jupyter
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-ubuntu-jupyter
+  serviceName: {{ .Release.Name }}-jupyter-service
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-ubuntu-jupyter
+    spec:
+      initContainers:
+      - name: init-uv-python-jupyter
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          if [ -d .venv ]; then
+            echo "Virtual environment already exists, skipping installation."
+            exit 0
+          fi
+          echo "Starting apt-get update..."
+          apt-get update || { echo "apt-get update failed"; exit 1; }
+          echo "Installing dependencies..."
+          apt-get install -y libc6 libssl3 zlib1g libbz2-dev libffi-dev libncurses5-dev libreadline-dev libsqlite3-dev libuuid1 || { echo "apt-get install failed"; exit 1; }
+          echo "Verifying uv installation..."
+          uv --version || { echo "uv --version failed"; exit 1; }
+          echo "Installing Python {{ .Values.pythonVersion }}..."
+          mkdir -p /workspace/.core
+          mkdir -p /workspace/.jupyter/config
+          mkdir -p /workspace/.jupyter/data
+          uv python install -i /workspace/.core {{ .Values.pythonVersion }} || { echo "uv python install failed"; exit 1; }
+          echo "Listing available Python versions..."
+          uv python list || { echo "uv python list failed"; exit 1; }
+          export UV_PYTHON_INSTALL_DIR=/workspace/.core
+          echo "Selecting Python interpreter..."
+          PYTHON_PATH=$(uv python find {{ .Values.pythonVersion }} || echo "")
+          if [ -z "$PYTHON_PATH" ]; then
+            echo "No Python {{ .Values.pythonVersion }} found with uv python find"
+            exit 1
+          fi
+          echo "Selected Python path: $PYTHON_PATH"
+          if [ ! -f "$PYTHON_PATH" ]; then
+            echo "Python interpreter not found at $PYTHON_PATH"
+            exit 1
+          fi
+          echo "Verifying Python interpreter..."
+          $PYTHON_PATH --version || { echo "Python interpreter failed to run"; exit 1; }
+          echo "Checking Python dependencies..."
+          ldd $PYTHON_PATH || { echo "ldd check on Python interpreter failed"; exit 1; }
+          echo "Creating virtual environment in /workspace/venv..."
+          uv venv --python "$PYTHON_PATH" .venv || { echo "uv venv failed"; exit 1; }
+          echo "Activating virtual environment..."
+          . .venv/bin/activate || { echo "venv activation failed"; exit 1; }
+          echo "Verifying virtual environment..."
+          ls -l .venv/bin/ || { echo "Virtual environment directory listing failed"; exit 1; }
+          python --version || { echo "Python in virtual environment failed"; exit 1; }
+          echo "Installing jupyterlab..."
+          uv pip install jupyterlab || { echo "jupyterlab install failed"; exit 1; }
+          echo "Verifying jupyterlab installation..."
+          if [ ! -f .venv/bin/jupyter ]; then
+            echo "jupyter executable not found in .venv/bin/"
+            exit 1
+          fi
+          echo "Testing jupyter executable..."
+          source .venv/bin/activate
+          .venv/bin/jupyter --version || { echo "jupyter executable failed to run"; exit 1; }
+          echo "Cleaning up..."
+          apt-get clean
+          rm -rf /var/lib/apt/lists/*
+          echo "Init container completed."
+        volumeMounts:
+        - name: workspace
+          mountPath: /workspace
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "1Gi"
+          requests:
+            cpu: "200m"
+            memory: "512Mi"
+      containers:
+      - name: ubuntu-jupyter
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        command:
+        - /bin/bash
+        - -c
+        - |
+          source .venv/bin/activate
+          JP_PASSWORD=$(python -c "from jupyter_server.auth import passwd; print(passwd('{{ .Values.password }}', algorithm='sha1'))")
+          echo "JP_PASSWORD: $JP_PASSWORD"
+          jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --ServerApp.password="$JP_PASSWORD" --ServerApp.terminado_settings="{'shell_command': ['/bin/bash']}"
+        ports:
+        - containerPort: 8888
+        env:
+        - name: JUPYTER_CONFIG_DIR
+          value: "/workspace/.jupyter/config"
+        - name: JUPYTER_DATA_DIR
+          value: "/workspace/.jupyter/data"
+        - name: UV_LINK_MODE
+          value: "copy"
+        volumeMounts:
+        - name: workspace
+          mountPath: /workspace
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "1Gi"
+          requests:
+            cpu: "200m"
+            memory: "512Mi"
+        securityContext:
+          allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
+          privileged: {{ .Values.securityContext.privileged }}
+      volumes:
+      - name: workspace
+        persistentVolumeClaim:
+          claimName: {{ .Release.Name }}-workspace-pvc
+      {{- if .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      {{- end }}
+      {{- if .Values.tolerations }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      {{- end }}
+      {{- if .Values.affinity }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}
+      {{- end }}

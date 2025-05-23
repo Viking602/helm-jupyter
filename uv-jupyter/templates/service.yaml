@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-jupyter-service
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: {{ .Release.Name }}-ubuntu-jupyter
+  ports:
+  - protocol: TCP
+    port: {{ .Values.service.port }}
+    targetPort: 8888
+  type: {{ .Values.service.type }}

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: my-ubuntu-jupyter
+description: A Helm chart to deploy Ubuntu 24.04 with Jupyter, UV, and Python
+version: 0.1.0
+appVersion: "24.04"
