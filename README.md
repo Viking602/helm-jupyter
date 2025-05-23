@@ -1,26 +1,32 @@
-# Helm-jupyter
-Helm Install Jupyter
+# Helm-Jupyter
 
-## Description
+Deploy Jupyter Notebook via Helm
 
-Default Python Version is 3.12
+## Overview
 
-Default Password is "jupyter"
+- **Default Python Version**: 3.12
 
-Change Python Version in values.yaml pythonVersion
+- **Default Password**: `jupyter`
+
+- **Customize Python Version**: Edit `pythonVersion` in `values.yaml`
 
 
 ## Install
 
+1. Clone the repository:
+
 ```bash
-1.
 git clone https://github.com/Viking602/helm-jupyter.git
 ```
-2.
+
+2. Navigate to the chart directory:
+
 ```bash
 cd helm-jupyter/uv-jupyter
 ```
-3.
+
+3. Install the Helm chart
+
 ```bash
 helm install <release-name> -f values.yaml .
 ```
@@ -29,3 +35,4 @@ helm install <release-name> -f values.yaml .
 ```bash
 helm uninstall <release-name>
 ```
+
