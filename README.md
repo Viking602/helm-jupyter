@@ -1,6 +1,6 @@
 # Helm-Jupyter
 
-Deploy Jupyter Notebook via Helm
+Deploy Jupyter via Helm
 
 ## Overview
 
@@ -9,6 +9,10 @@ Deploy Jupyter Notebook via Helm
 - **Default Password**: `jupyter`
 
 - **Customize Python Version**: Edit `pythonVersion` in `values.yaml`
+
+- **Customize Password**: Edit `password` in `values.yaml`
+
+- **Environments**: Use `uv` to manage Python environments [docs](https://docs.astral.sh/uv/)
 
 
 ## Install
