@@ -4,9 +4,19 @@ Deploy Jupyter via Helm
 
 ## Overview
 
-- **Default Python Version**: 3.12
+- **Default Install Python Version**: 3.12
 
 - **Default Password**: `jupyter`
+
+- **Default Storage**: 50Gi
+
+- **Default Jupyter Root Dir**: `/workspace`
+
+- **Default venv Dir**: `/workspace/.venv`
+
+- **Default Jupyter Config Dir**: `/workspace/.jupyter/.config`
+
+- **Default Jupyter Data Dir**: `/workspace/.jupyter/.data`
 
 - **Customize Python Version**: Edit `pythonVersion` in `values.yaml`
 
